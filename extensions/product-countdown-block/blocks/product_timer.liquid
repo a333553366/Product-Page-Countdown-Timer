@@ -1,0 +1,73 @@
+﻿{% assign cfg = app.metafields.product_timer.settings.value %}
+{% assign heading = cfg.heading | default: '🔥 Limited Deal Ends In:' %}
+{% assign note = cfg.urgencyNote | default: 'Order before timer expires to lock in current price!' %}
+{% assign bg_color = cfg.bgColor | default: '#fff8f6' %}
+{% assign border_color = cfg.borderColor | default: '#ffccc7' %}
+{% assign text_color = cfg.textColor | default: '#262626' %}
+{% assign digit_bg = cfg.digitBgColor | default: '#cf1322' %}
+{% assign digit_text = cfg.digitTextColor | default: '#ffffff' %}
+{% assign init_hours = cfg.hours | default: '04' | plus: 0 %}
+{% assign init_mins = cfg.minutes | default: '30' | plus: 0 %}
+
+<div
+  class="pp-countdown-card"
+  data-hours="{{ init_hours }}"
+  data-mins="{{ init_mins }}"
+  style="background: {{ bg_color }}; border: 1px solid {{ border_color }}; color: {{ text_color }}; padding: 16px; border-radius: 8px; margin: 14px 0; text-align: center;"
+>
+  <div style="font-weight: 700; font-size: 15px; margin-bottom: 10px;">{{ heading }}</div>
+  <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 10px;">
+    <div style="background: {{ digit_bg }}; color: {{ digit_text }}; padding: 8px 14px; border-radius: 6px; min-width: 54px;">
+      <div class="pp-cd-hrs" style="font-size: 18px; font-weight: 700; line-height: 1.2;">{{ init_hours }}</div>
+      <div style="font-size: 10px; opacity: 0.9;">HRS</div>
+    </div>
+    <div style="background: {{ digit_bg }}; color: {{ digit_text }}; padding: 8px 14px; border-radius: 6px; min-width: 54px;">
+      <div class="pp-cd-mins" style="font-size: 18px; font-weight: 700; line-height: 1.2;">{{ init_mins }}</div>
+      <div style="font-size: 10px; opacity: 0.9;">MIN</div>
+    </div>
+    <div style="background: {{ digit_bg }}; color: {{ digit_text }}; padding: 8px 14px; border-radius: 6px; min-width: 54px;">
+      <div class="pp-cd-secs" style="font-size: 18px; font-weight: 700; line-height: 1.2;">59</div>
+      <div style="font-size: 10px; opacity: 0.9;">SEC</div>
+    </div>
+  </div>
+  {% if note != blank %}
+    <div style="font-size: 12px; opacity: 0.85;">{{ note }}</div>
+  {% endif %}
+</div>
+
+<script>
+(function() {
+  document.querySelectorAll('.pp-countdown-card').forEach(function(card) {
+    if (card.dataset.initialized) return;
+    card.dataset.initialized = 'true';
+    var h = parseInt(card.dataset.hours || '4', 10);
+    var m = parseInt(card.dataset.mins || '30', 10);
+    var totalSeconds = (h * 3600) + (m * 60);
+    var hrsEl = card.querySelector('.pp-cd-hrs');
+    var minsEl = card.querySelector('.pp-cd-mins');
+    var secsEl = card.querySelector('.pp-cd-secs');
+
+    function tick() {
+      if (totalSeconds <= 0) totalSeconds = (h * 3600) + (m * 60);
+      var ch = Math.floor(totalSeconds / 3600);
+      var cm = Math.floor((totalSeconds % 3600) / 60);
+      var cs = totalSeconds % 60;
+      if (hrsEl) hrsEl.textContent = String(ch).padStart(2, '0');
+      if (minsEl) minsEl.textContent = String(cm).padStart(2, '0');
+      if (secsEl) secsEl.textContent = String(cs).padStart(2, '0');
+      totalSeconds--;
+    }
+    tick();
+    setInterval(tick, 1000);
+  });
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Product Deal Countdown",
+  "target": "section",
+  "templates": ["product"],
+  "settings": []
+}
+{% endschema %}

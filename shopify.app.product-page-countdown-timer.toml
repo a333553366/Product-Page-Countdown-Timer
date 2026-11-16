@@ -1,0 +1,20 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "bfbdefc823785d0d0ab32ff97caf2501"
+name = "Product Page Countdown Timer"
+application_url = "https://product-page-countdown-timer.onrender.com"
+embedded = true
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = ""
+optional_scopes = [ ]
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [
+  "https://product-page-countdown-timer.onrender.com/auth/callback"
+]
+
+[webhooks]
+api_version = "2026-10"
