@@ -33,17 +33,9 @@ const THEME_PRESETS = [
 ];
 
 export const loader = async ({ request }) => {
-  const { admin, session } = await authenticate.admin(request);
+  const { admin } = await authenticate.admin(request);
 
   let storeProducts = [];
-  let debugInfo = {
-    shop: session?.shop || "UNKNOWN",
-    sessionScopes: session?.scope || "NONE",
-    productQueryStatus: "PENDING",
-    productCount: 0,
-    errorDetail: null,
-  };
-
   let settings = {
     heading: "FLASH DEAL ENDS IN",
     urgencyNote: "Order before the timer runs out to claim your special price.",
@@ -56,7 +48,6 @@ export const loader = async ({ request }) => {
     minutes: "30",
   };
 
-  // 1. 独立读取已保存的倒计时配置
   try {
     const metaResponse = await admin.graphql(`
       #graphql
@@ -77,7 +68,6 @@ export const loader = async ({ request }) => {
     console.error("Failed to load metafield settings:", metaErr);
   }
 
-  // 2. 独立读取店铺真实商品列表（最简稳定字段）
   try {
     const prodResponse = await admin.graphql(`
       #graphql
@@ -103,26 +93,18 @@ export const loader = async ({ request }) => {
       }
     `);
     const prodJson = await prodResponse.json();
-    if (prodJson?.errors) {
-      debugInfo.productQueryStatus = "GRAPHQL_ERROR";
-      debugInfo.errorDetail = JSON.stringify(prodJson.errors);
-    } else {
-      const nodes = prodJson?.data?.products?.nodes || [];
-      debugInfo.productQueryStatus = "SUCCESS";
-      debugInfo.productCount = nodes.length;
-      storeProducts = nodes.map((p) => ({
-        id: p.id,
-        title: p.title,
-        price: p.variants?.nodes?.[0]?.price || "29.99",
-        image: p.featuredMedia?.preview?.image?.url || null,
-      }));
-    }
+    const nodes = prodJson?.data?.products?.nodes || [];
+    storeProducts = nodes.map((p) => ({
+      id: p.id,
+      title: p.title,
+      price: p.variants?.nodes?.[0]?.price || "29.99",
+      image: p.featuredMedia?.preview?.image?.url || null,
+    }));
   } catch (prodErr) {
-    debugInfo.productQueryStatus = "EXCEPTION";
-    debugInfo.errorDetail = prodErr?.message || String(prodErr);
+    console.error("Failed to load store products:", prodErr);
   }
 
-  return { settings, storeProducts, debugInfo };
+  return { settings, storeProducts };
 };
 
 export const action = async ({ request }) => {
@@ -187,7 +169,7 @@ export const action = async ({ request }) => {
 };
 
 export default function ProductTimerIndex() {
-  const { settings, storeProducts, debugInfo } = useLoaderData();
+  const { settings, storeProducts } = useLoaderData();
   const actionData = useActionData();
   const navigation = useNavigation();
   const submit = useSubmit();
@@ -242,7 +224,7 @@ export default function ProductTimerIndex() {
   };
 
   const currentProduct = storeProducts[selectedProductIndex] || {
-    title: "No products in store yet",
+    title: "Store Product",
     price: "0.00",
     image: null,
   };
@@ -251,12 +233,6 @@ export default function ProductTimerIndex() {
     <div style={{ padding: "28px 32px", minHeight: "100vh", backgroundColor: "#f1f2f4", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#1a1c1d" }}>
       <div style={{ maxWidth: "1080px", margin: "0 auto" }}>
         
-        {/* 顶部实时诊断栏 */}
-        <div style={{ background: "#fffbeb", border: "1px solid #f59e0b", borderRadius: "10px", padding: "12px 16px", marginBottom: "20px", fontSize: "12.5px", color: "#92400e", fontFamily: "monospace" }}>
-          <strong>[API Diagnostic]</strong> Shop: <code>{debugInfo.shop}</code> | Scopes: <code>{debugInfo.sessionScopes}</code> | Status: <code>{debugInfo.productQueryStatus}</code> | Found: <code>{debugInfo.productCount}</code>
-          {debugInfo.errorDetail && <div style={{ marginTop: "6px", color: "#b91c1c" }}>Error: {debugInfo.errorDetail}</div>}
-        </div>
-
         {/* 顶部通栏 */}
         <div style={{ background: "#ffffff", padding: "20px 24px", borderRadius: "12px", border: "1px solid #e3e5e7", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
           <div>
