@@ -35,7 +35,7 @@ const THEME_PRESETS = [
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
 
-  let previewProductTitle = "Classic Minimalist Watch";
+  let storeProducts = [];
   let settings = {
     heading: "FLASH DEAL ENDS IN",
     urgencyNote: "Order before the timer runs out to claim your special price.",
@@ -48,15 +48,11 @@ export const loader = async ({ request }) => {
     minutes: "30",
   };
 
+  // 1. 独立读取已保存的倒计时配置（确保刷新/重进页面 100% 回显）
   try {
-    const response = await admin.graphql(`
+    const metaResponse = await admin.graphql(`
       #graphql
-      query getProductTimerSettings {
-        products(first: 1) {
-          nodes {
-            title
-          }
-        }
+      query getSavedTimerSettings {
         currentAppInstallation {
           metafield(namespace: "product_timer", key: "settings") {
             value
@@ -64,20 +60,50 @@ export const loader = async ({ request }) => {
         }
       }
     `);
-    const json = await response.json();
-    const firstProduct = json?.data?.products?.nodes?.[0];
-    if (firstProduct?.title) {
-      previewProductTitle = firstProduct.title;
-    }
-    const rawValue = json?.data?.currentAppInstallation?.metafield?.value;
+    const metaJson = await metaResponse.json();
+    const rawValue = metaJson?.data?.currentAppInstallation?.metafield?.value;
     if (rawValue) {
-      settings = { ...settings, ...JSON.parse(rawValue) };
+      const parsed = JSON.parse(rawValue);
+      settings = { ...settings, ...parsed };
     }
   } catch (metaErr) {
-    console.error("GraphQL query failed:", metaErr);
+    console.error("Failed to load metafield settings:", metaErr);
   }
 
-  return { settings, previewProductTitle };
+  // 2. 独立读取店铺真实商品列表（满足 Shopify 2.2.1 权限审核且互不干扰）
+  try {
+    const prodResponse = await admin.graphql(`
+      #graphql
+      query getStoreProductsForPreview {
+        products(first: 10) {
+          nodes {
+            id
+            title
+            featuredImage {
+              url
+            }
+            variants(first: 1) {
+              nodes {
+                price
+              }
+            }
+          }
+        }
+      }
+    `);
+    const prodJson = await prodResponse.json();
+    const nodes = prodJson?.data?.products?.nodes || [];
+    storeProducts = nodes.map((p) => ({
+      id: p.id,
+      title: p.title,
+      price: p.variants?.nodes?.[0]?.price || "29.99",
+      image: p.featuredImage?.url || null,
+    }));
+  } catch (prodErr) {
+    console.error("Failed to load store products:", prodErr);
+  }
+
+  return { settings, storeProducts };
 };
 
 export const action = async ({ request }) => {
@@ -117,6 +143,10 @@ export const action = async ({ request }) => {
               key
               value
             }
+            userErrors {
+              field
+              message
+            }
           }
         }`,
         {
@@ -142,7 +172,7 @@ export const action = async ({ request }) => {
 };
 
 export default function ProductTimerIndex() {
-  const { settings, previewProductTitle } = useLoaderData();
+  const { settings, storeProducts } = useLoaderData();
   const actionData = useActionData();
   const navigation = useNavigation();
   const submit = useSubmit();
@@ -156,7 +186,21 @@ export default function ProductTimerIndex() {
   const [digitTextColor, setDigitTextColor] = useState(settings.digitTextColor);
   const [hours, setHours] = useState(settings.hours);
   const [minutes, setMinutes] = useState(settings.minutes);
+  const [selectedProductIndex, setSelectedProductIndex] = useState(0);
   const [saved, setSaved] = useState(false);
+
+  // 同步 loader 最新读取到的配置，防止路由重新验证时状态不同步
+  useEffect(() => {
+    setHeading(settings.heading);
+    setUrgencyNote(settings.urgencyNote);
+    setBgColor(settings.bgColor);
+    setBorderColor(settings.borderColor);
+    setTextColor(settings.textColor);
+    setDigitBgColor(settings.digitBgColor);
+    setDigitTextColor(settings.digitTextColor);
+    setHours(settings.hours);
+    setMinutes(settings.minutes);
+  }, [settings]);
 
   const isSaving = navigation.state === "submitting";
 
@@ -183,6 +227,12 @@ export default function ProductTimerIndex() {
     );
   };
 
+  const currentProduct = storeProducts[selectedProductIndex] || {
+    title: storeProducts.length > 0 ? storeProducts[0].title : "No products in store yet",
+    price: "0.00",
+    image: null,
+  };
+
   return (
     <div style={{ padding: "28px 32px", minHeight: "100vh", backgroundColor: "#f1f2f4", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#1a1c1d" }}>
       <div style={{ maxWidth: "1080px", margin: "0 auto" }}>
@@ -200,7 +250,7 @@ export default function ProductTimerIndex() {
             type="button"
             onClick={handleSave} 
             disabled={isSaving}
-            style={{ backgroundColor: isSaving ? "#8c9196" : "#111213", color: "#ffffff", border: "none", padding: "11px 26px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: isSaving ? "not-allowed" : "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.12)", transition: "all 0.15s ease" }}
+            style={{ backgroundColor: isSaving ? "#8c9196" : "#111213", color: "#ffffff", border: "none", padding: "11px 26px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: isSaving ? "not-allowed" : "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.12)" }}
           >
             {isSaving ? "Saving Changes..." : (saved ? "✓ Saved to Store" : "Save & Publish")}
           </button>
@@ -212,7 +262,7 @@ export default function ProductTimerIndex() {
           </div>
         )}
 
-        {/* 主体双栏布局：左侧配置 + 右侧产品页实景预览 */}
+        {/* 主体双栏布局 */}
         <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "24px", alignItems: "start" }}>
           
           {/* 左侧：配置面板 */}
@@ -231,12 +281,11 @@ export default function ProductTimerIndex() {
                     style={{
                       padding: "12px",
                       borderRadius: "10px",
-                      border: bgColor === preset.bgColor ? "2px solid #111213" : "1px solid #dcdfe3",
+                      border: bgColor === preset.bgColor && digitBgColor === preset.digitBgColor ? "2px solid #111213" : "1px solid #dcdfe3",
                       background: preset.bgColor,
                       color: preset.textColor,
                       cursor: "pointer",
                       textAlign: "left",
-                      transition: "all 0.15s ease",
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
@@ -309,14 +358,34 @@ export default function ProductTimerIndex() {
 
           </div>
 
-          {/* 右侧：产品详情页实景位置模拟预览 */}
+          {/* 右侧：读取店铺真实商品的实景预览 */}
           <div style={{ background: "#ffffff", borderRadius: "12px", padding: "24px", border: "1px solid #e3e5e7", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", position: "sticky", top: "24px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid #f0f1f3" }}>
-              <span style={{ fontSize: "12px", fontWeight: "700", color: "#616a75", textTransform: "uppercase", letterSpacing: "0.5px" }}>Storefront Placement Preview</span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", paddingBottom: "12px", borderBottom: "1px solid #f0f1f3" }}>
+              <span style={{ fontSize: "12px", fontWeight: "700", color: "#616a75", textTransform: "uppercase", letterSpacing: "0.5px" }}>Live Store Product Preview</span>
               <span style={{ fontSize: "11px", color: "#108043", backgroundColor: "#e3f1df", padding: "2px 8px", borderRadius: "6px", fontWeight: "600" }}>Above Product Title</span>
             </div>
 
-            {/* 模拟真实店铺商品页结构 */}
+            {/* 店铺真实商品选择器（让商家和审核员可以直接切换查看店铺真实商品效果） */}
+            {storeProducts.length > 0 && (
+              <div style={{ marginBottom: "14px" }}>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#4a4f55", marginBottom: "6px" }}>
+                  Preview with your store product ({storeProducts.length} loaded):
+                </label>
+                <select
+                  value={selectedProductIndex}
+                  onChange={(e) => setSelectedProductIndex(Number(e.target.value))}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid #c9cccf", fontSize: "13px", backgroundColor: "#fff" }}
+                >
+                  {storeProducts.map((prod, idx) => (
+                    <option key={prod.id} value={idx}>
+                      {prod.title} — ${prod.price}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* 真实店铺商品页结构渲染 */}
             <div style={{ padding: "16px", backgroundColor: "#fafafa", borderRadius: "10px", border: "1px dashed #d2d5d8" }}>
               
               {/* 倒计时卡片渲染区（位于产品标题正上方） */}
@@ -357,14 +426,24 @@ export default function ProductTimerIndex() {
                 </div>
               </div>
 
-              {/* 模拟下方店铺原生产品标题与加购按钮 */}
-              <div style={{ padding: "0 4px" }}>
-                <div style={{ fontSize: "11px", color: "#8c9196", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>STOREFRONT PRODUCT</div>
-                <div style={{ fontSize: "20px", fontWeight: "700", color: "#111213", marginBottom: "6px" }}>{previewProductTitle}</div>
-                <div style={{ fontSize: "16px", fontWeight: "600", color: "#303336", marginBottom: "14px" }}>$89.00 USD</div>
-                <div style={{ backgroundColor: "#111213", color: "#fff", textAlign: "center", padding: "12px", borderRadius: "6px", fontSize: "13px", fontWeight: "600", opacity: 0.9 }}>
-                  Add to cart
+              {/* 店铺真实产品标题、图片与真实价格 */}
+              <div style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "14px" }}>
+                {currentProduct.image && (
+                  <img
+                    src={currentProduct.image}
+                    alt={currentProduct.title}
+                    style={{ width: "56px", height: "56px", objectFit: "cover", borderRadius: "8px", border: "1px solid #e1e3e5" }}
+                  />
+                )}
+                <div>
+                  <div style={{ fontSize: "11px", color: "#8c9196", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>STOREFRONT PRODUCT</div>
+                  <div style={{ fontSize: "18px", fontWeight: "700", color: "#111213", marginBottom: "2px" }}>{currentProduct.title}</div>
+                  <div style={{ fontSize: "15px", fontWeight: "600", color: "#303336" }}>${currentProduct.price}</div>
                 </div>
+              </div>
+
+              <div style={{ backgroundColor: "#111213", color: "#fff", textAlign: "center", padding: "12px", borderRadius: "6px", fontSize: "13px", fontWeight: "600", opacity: 0.9 }}>
+                Add to cart
               </div>
 
             </div>
