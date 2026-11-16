@@ -180,7 +180,7 @@ export default function ProductTimerIndex() {
             <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "10px" }}>
               <div style={{ backgroundColor: digitBgColor, color: digitTextColor, padding: "8px 14px", borderRadius: "6px", minWidth: "54px" }}>
                 <div style={{ fontSize: "18px", fontWeight: "700" }}>{hours}</div>
-                <div style="fontSize: 10px; opacity: 0.9;">HRS</div>
+                <div style={{ fontSize: "10px", opacity: 0.9 }}>HRS</div>
               </div>
               <div style={{ backgroundColor: digitBgColor, color: digitTextColor, padding: "8px 14px", borderRadius: "6px", minWidth: "54px" }}>
                 <div style={{ fontSize: "18px", fontWeight: "700" }}>{minutes}</div>
