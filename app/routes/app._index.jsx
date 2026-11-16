@@ -2,17 +2,47 @@
 import { useSubmit, useLoaderData, useActionData, useNavigation } from "react-router";
 import { authenticate } from "../shopify.server";
 
+const THEME_PRESETS = [
+  {
+    name: "Crimson Flash Sale",
+    badge: "Popular",
+    bgColor: "#fff5f5",
+    borderColor: "#feb2b2",
+    textColor: "#1a202c",
+    digitBgColor: "#e53e3e",
+    digitTextColor: "#ffffff",
+  },
+  {
+    name: "Midnight Luxury",
+    badge: "Dark",
+    bgColor: "#111827",
+    borderColor: "#374151",
+    textColor: "#f9fafb",
+    digitBgColor: "#f59e0b",
+    digitTextColor: "#111827",
+  },
+  {
+    name: "Ocean Trust",
+    badge: "Clean",
+    bgColor: "#eff6ff",
+    borderColor: "#bfdbfe",
+    textColor: "#1e3a8a",
+    digitBgColor: "#2563eb",
+    digitTextColor: "#ffffff",
+  },
+];
+
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
 
-  let previewProductTitle = "Sample Product";
+  let previewProductTitle = "Classic Minimalist Watch";
   let settings = {
-    heading: "🔥 Limited Deal Ends In:",
-    urgencyNote: "Order before timer expires to lock in current price!",
-    bgColor: "#fff8f6",
-    borderColor: "#ffccc7",
-    textColor: "#262626",
-    digitBgColor: "#cf1322",
+    heading: "FLASH DEAL ENDS IN",
+    urgencyNote: "Order before the timer runs out to claim your special price.",
+    bgColor: "#fff5f5",
+    borderColor: "#feb2b2",
+    textColor: "#1a202c",
+    digitBgColor: "#e53e3e",
     digitTextColor: "#ffffff",
     hours: "04",
     minutes: "30",
@@ -56,12 +86,12 @@ export const action = async ({ request }) => {
 
   try {
     const payload = {
-      heading: formData.get("heading") || "🔥 Limited Deal Ends In:",
+      heading: formData.get("heading") || "FLASH DEAL ENDS IN",
       urgencyNote: formData.get("urgencyNote") || "",
-      bgColor: formData.get("bgColor") || "#fff8f6",
-      borderColor: formData.get("borderColor") || "#ffccc7",
-      textColor: formData.get("textColor") || "#262626",
-      digitBgColor: formData.get("digitBgColor") || "#cf1322",
+      bgColor: formData.get("bgColor") || "#fff5f5",
+      borderColor: formData.get("borderColor") || "#feb2b2",
+      textColor: formData.get("textColor") || "#1a202c",
+      digitBgColor: formData.get("digitBgColor") || "#e53e3e",
       digitTextColor: formData.get("digitTextColor") || "#ffffff",
       hours: formData.get("hours") || "04",
       minutes: formData.get("minutes") || "30",
@@ -138,6 +168,14 @@ export default function ProductTimerIndex() {
     }
   }, [actionData]);
 
+  const applyPreset = (preset) => {
+    setBgColor(preset.bgColor);
+    setBorderColor(preset.borderColor);
+    setTextColor(preset.textColor);
+    setDigitBgColor(preset.digitBgColor);
+    setDigitTextColor(preset.digitTextColor);
+  };
+
   const handleSave = () => {
     submit(
       { heading, urgencyNote, bgColor, borderColor, textColor, digitBgColor, digitTextColor, hours, minutes },
@@ -146,103 +184,197 @@ export default function ProductTimerIndex() {
   };
 
   return (
-    <div style={{ padding: "32px", minHeight: "100vh", backgroundColor: "#f6f6f7", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#202223" }}>
-      <div style={{ maxWidth: "920px", margin: "0 auto" }}>
+    <div style={{ padding: "28px 32px", minHeight: "100vh", backgroundColor: "#f1f2f4", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#1a1c1d" }}>
+      <div style={{ maxWidth: "1080px", margin: "0 auto" }}>
         
-        <div style={{ marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        {/* 顶部通栏 */}
+        <div style={{ background: "#ffffff", padding: "20px 24px", borderRadius: "12px", border: "1px solid #e3e5e7", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
           <div>
-            <h1 style={{ fontSize: "22px", fontWeight: "700", margin: "0 0 4px 0" }}>Product Page Countdown Timer</h1>
-            <p style={{ fontSize: "13px", color: "#6d7175", margin: 0 }}>Embed an urgency timer block directly above your product Add-to-Cart button.</p>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <h1 style={{ fontSize: "20px", fontWeight: "700", margin: 0, letterSpacing: "-0.3px" }}>Product Page Countdown Timer</h1>
+              <span style={{ backgroundColor: "#e3f1df", color: "#108043", fontSize: "11px", fontWeight: "700", padding: "3px 10px", borderRadius: "20px" }}>AUTO ABOVE PRODUCT TITLE</span>
+            </div>
+            <p style={{ fontSize: "13px", color: "#616a75", margin: "4px 0 0 0" }}>Automatically displays an urgency countdown card right above your product title on all product pages.</p>
           </div>
           <button 
             type="button"
             onClick={handleSave} 
             disabled={isSaving}
-            style={{ backgroundColor: isSaving ? "#8c9196" : "#008060", color: "#fff", border: "none", padding: "10px 22px", borderRadius: "6px", fontSize: "14px", fontWeight: "600", cursor: isSaving ? "not-allowed" : "pointer" }}
+            style={{ backgroundColor: isSaving ? "#8c9196" : "#111213", color: "#ffffff", border: "none", padding: "11px 26px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: isSaving ? "not-allowed" : "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.12)", transition: "all 0.15s ease" }}
           >
-            {isSaving ? "Saving..." : (saved ? "Saved!" : "Save Settings")}
+            {isSaving ? "Saving Changes..." : (saved ? "✓ Saved to Store" : "Save & Publish")}
           </button>
         </div>
 
         {saved && (
-          <div style={{ padding: "12px 16px", backgroundColor: "#e3f1df", border: "1px solid #9bc995", borderRadius: "6px", marginBottom: "20px", color: "#1a5e18", fontSize: "14px" }}>
-            Product countdown block settings saved!
+          <div style={{ padding: "14px 18px", backgroundColor: "#e3f1df", border: "1px solid #9bc995", borderRadius: "10px", marginBottom: "20px", color: "#108043", fontSize: "14px", fontWeight: "500" }}>
+            ✓ Settings updated! Your product page countdown timer is now live above the product title.
           </div>
         )}
 
-        {/* Product Block Live Preview */}
-        <div style={{ background: "#fff", borderRadius: "8px", padding: "20px", border: "1px solid #e1e3e5", marginBottom: "24px" }}>
-          <h3 style={{ fontSize: "12px", fontWeight: "700", margin: "0 0 12px 0", color: "#6d7175", textTransform: "uppercase" }}>
-            Product Page Block Preview ({previewProductTitle})
-          </h3>
-          <div style={{ maxWidth: "460px", backgroundColor: bgColor, border: `1px solid ${borderColor}`, color: textColor, padding: "16px", borderRadius: "8px", textAlign: "center" }}>
-            <div style={{ fontWeight: "700", fontSize: "15px", marginBottom: "10px" }}>{heading}</div>
-            <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "10px" }}>
-              <div style={{ backgroundColor: digitBgColor, color: digitTextColor, padding: "8px 14px", borderRadius: "6px", minWidth: "54px" }}>
-                <div style={{ fontSize: "18px", fontWeight: "700" }}>{hours}</div>
-                <div style={{ fontSize: "10px", opacity: 0.9 }}>HRS</div>
-              </div>
-              <div style={{ backgroundColor: digitBgColor, color: digitTextColor, padding: "8px 14px", borderRadius: "6px", minWidth: "54px" }}>
-                <div style={{ fontSize: "18px", fontWeight: "700" }}>{minutes}</div>
-                <div style={{ fontSize: "10px", opacity: 0.9 }}>MIN</div>
-              </div>
-              <div style={{ backgroundColor: digitBgColor, color: digitTextColor, padding: "8px 14px", borderRadius: "6px", minWidth: "54px" }}>
-                <div style={{ fontSize: "18px", fontWeight: "700" }}>45</div>
-                <div style={{ fontSize: "10px", opacity: 0.9 }}>SEC</div>
+        {/* 主体双栏布局：左侧配置 + 右侧产品页实景预览 */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "24px", alignItems: "start" }}>
+          
+          {/* 左侧：配置面板 */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            
+            {/* 预设风格选择器 */}
+            <div style={{ background: "#ffffff", borderRadius: "12px", padding: "22px", border: "1px solid #e3e5e7", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+              <h3 style={{ fontSize: "15px", fontWeight: "700", margin: "0 0 4px 0" }}>Quick Theme Presets</h3>
+              <p style={{ fontSize: "12.5px", color: "#616a75", margin: "0 0 14px 0" }}>One-click designer color schemes tailored for high conversion.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
+                {THEME_PRESETS.map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => applyPreset(preset)}
+                    style={{
+                      padding: "12px",
+                      borderRadius: "10px",
+                      border: bgColor === preset.bgColor ? "2px solid #111213" : "1px solid #dcdfe3",
+                      background: preset.bgColor,
+                      color: preset.textColor,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <span style={{ width: "16px", height: "16px", borderRadius: "4px", backgroundColor: preset.digitBgColor, display: "inline-block" }}></span>
+                      <span style={{ fontSize: "10px", fontWeight: "700", opacity: 0.75 }}>{preset.badge}</span>
+                    </div>
+                    <div style={{ fontSize: "12px", fontWeight: "700" }}>{preset.name}</div>
+                  </button>
+                ))}
               </div>
             </div>
-            {urgencyNote && <div style={{ fontSize: "12px", opacity: 0.85 }}>{urgencyNote}</div>}
+
+            {/* 文案与时间 */}
+            <div style={{ background: "#ffffff", borderRadius: "12px", padding: "22px", border: "1px solid #e3e5e7", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+              <h3 style={{ fontSize: "15px", fontWeight: "700", margin: "0 0 16px 0" }}>Content & Countdown Duration</h3>
+              <div style={{ marginBottom: "14px" }}>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px", color: "#303336" }}>Badge Headline</label>
+                <input type="text" value={heading} onChange={(e) => setHeading(e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #c9cccf", fontSize: "14px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: "16px" }}>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px", color: "#303336" }}>Urgency Subtext</label>
+                <input type="text" value={urgencyNote} onChange={(e) => setUrgencyNote(e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #c9cccf", fontSize: "14px", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px", color: "#303336" }}>Hours</label>
+                  <input type="number" min="0" max="99" value={hours} onChange={(e) => setHours(e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #c9cccf", fontSize: "14px", boxSizing: "border-box" }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px", color: "#303336" }}>Minutes</label>
+                  <input type="number" min="0" max="59" value={minutes} onChange={(e) => setMinutes(e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #c9cccf", fontSize: "14px", boxSizing: "border-box" }} />
+                </div>
+              </div>
+            </div>
+
+            {/* 自定义调色板 */}
+            <div style={{ background: "#ffffff", borderRadius: "12px", padding: "22px", border: "1px solid #e3e5e7", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+              <h3 style={{ fontSize: "15px", fontWeight: "700", margin: "0 0 16px 0" }}>Custom Color Fine-Tuning</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "14px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", marginBottom: "6px", color: "#4a4f55" }}>Card Background</label>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", border: "1px solid #c9cccf", padding: "4px 8px", borderRadius: "8px" }}>
+                    <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} style={{ width: "28px", height: "28px", border: "none", background: "none", cursor: "pointer" }} />
+                    <span style={{ fontSize: "13px", fontFamily: "monospace" }}>{bgColor}</span>
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", marginBottom: "6px", color: "#4a4f55" }}>Border Accent</label>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", border: "1px solid #c9cccf", padding: "4px 8px", borderRadius: "8px" }}>
+                    <input type="color" value={borderColor} onChange={(e) => setBorderColor(e.target.value)} style={{ width: "28px", height: "28px", border: "none", background: "none", cursor: "pointer" }} />
+                    <span style={{ fontSize: "13px", fontFamily: "monospace" }}>{borderColor}</span>
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", marginBottom: "6px", color: "#4a4f55" }}>Timer Box Fill</label>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", border: "1px solid #c9cccf", padding: "4px 8px", borderRadius: "8px" }}>
+                    <input type="color" value={digitBgColor} onChange={(e) => setDigitBgColor(e.target.value)} style={{ width: "28px", height: "28px", border: "none", background: "none", cursor: "pointer" }} />
+                    <span style={{ fontSize: "13px", fontFamily: "monospace" }}>{digitBgColor}</span>
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", marginBottom: "6px", color: "#4a4f55" }}>Heading & Digit Text</label>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input type="color" title="Heading Text" value={textColor} onChange={(e) => setTextColor(e.target.value)} style={{ flex: 1, height: "38px", border: "1px solid #c9cccf", borderRadius: "8px", cursor: "pointer" }} />
+                    <input type="color" title="Digit Text" value={digitTextColor} onChange={(e) => setDigitTextColor(e.target.value)} style={{ flex: 1, height: "38px", border: "1px solid #c9cccf", borderRadius: "8px", cursor: "pointer" }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
+
+          {/* 右侧：产品详情页实景位置模拟预览 */}
+          <div style={{ background: "#ffffff", borderRadius: "12px", padding: "24px", border: "1px solid #e3e5e7", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", position: "sticky", top: "24px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid #f0f1f3" }}>
+              <span style={{ fontSize: "12px", fontWeight: "700", color: "#616a75", textTransform: "uppercase", letterSpacing: "0.5px" }}>Storefront Placement Preview</span>
+              <span style={{ fontSize: "11px", color: "#108043", backgroundColor: "#e3f1df", padding: "2px 8px", borderRadius: "6px", fontWeight: "600" }}>Above Product Title</span>
+            </div>
+
+            {/* 模拟真实店铺商品页结构 */}
+            <div style={{ padding: "16px", backgroundColor: "#fafafa", borderRadius: "10px", border: "1px dashed #d2d5d8" }}>
+              
+              {/* 倒计时卡片渲染区（位于产品标题正上方） */}
+              <div style={{
+                background: bgColor,
+                border: `1.5px solid ${borderColor}`,
+                color: textColor,
+                padding: "16px 18px",
+                borderRadius: "12px",
+                marginBottom: "18px",
+                boxShadow: "0 4px 14px rgba(0, 0, 0, 0.05)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+                  <div style={{ flex: 1, minWidth: "150px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                      <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", background: digitBgColor }}></span>
+                      <span style={{ fontWeight: "800", fontSize: "12.5px", letterSpacing: "0.5px", textTransform: "uppercase" }}>{heading}</span>
+                    </div>
+                    {urgencyNote && <div style={{ fontSize: "12px", opacity: 0.85, lineHeight: 1.4 }}>{urgencyNote}</div>}
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                    <div style={{ background: digitBgColor, color: digitTextColor, padding: "7px 9px", borderRadius: "8px", minWidth: "42px", textAlign: "center" }}>
+                      <div style={{ fontSize: "16px", fontWeight: "800", lineHeight: 1.1 }}>{String(hours).padStart(2, "0")}</div>
+                      <div style={{ fontSize: "8.5px", fontWeight: "600", opacity: 0.85, marginTop: "2px" }}>HRS</div>
+                    </div>
+                    <span style={{ fontWeight: "800", fontSize: "15px", opacity: 0.6 }}>:</span>
+                    <div style={{ background: digitBgColor, color: digitTextColor, padding: "7px 9px", borderRadius: "8px", minWidth: "42px", textAlign: "center" }}>
+                      <div style={{ fontSize: "16px", fontWeight: "800", lineHeight: 1.1 }}>{String(minutes).padStart(2, "0")}</div>
+                      <div style={{ fontSize: "8.5px", fontWeight: "600", opacity: 0.85, marginTop: "2px" }}>MIN</div>
+                    </div>
+                    <span style={{ fontWeight: "800", fontSize: "15px", opacity: 0.6 }}>:</span>
+                    <div style={{ background: digitBgColor, color: digitTextColor, padding: "7px 9px", borderRadius: "8px", minWidth: "42px", textAlign: "center" }}>
+                      <div style={{ fontSize: "16px", fontWeight: "800", lineHeight: 1.1 }}>48</div>
+                      <div style={{ fontSize: "8.5px", fontWeight: "600", opacity: 0.85, marginTop: "2px" }}>SEC</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 模拟下方店铺原生产品标题与加购按钮 */}
+              <div style={{ padding: "0 4px" }}>
+                <div style={{ fontSize: "11px", color: "#8c9196", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>STOREFRONT PRODUCT</div>
+                <div style={{ fontSize: "20px", fontWeight: "700", color: "#111213", marginBottom: "6px" }}>{previewProductTitle}</div>
+                <div style={{ fontSize: "16px", fontWeight: "600", color: "#303336", marginBottom: "14px" }}>$89.00 USD</div>
+                <div style={{ backgroundColor: "#111213", color: "#fff", textAlign: "center", padding: "12px", borderRadius: "6px", fontSize: "13px", fontWeight: "600", opacity: 0.9 }}>
+                  Add to cart
+                </div>
+              </div>
+
+            </div>
+
+            <div style={{ marginTop: "14px", fontSize: "12px", color: "#616a75", lineHeight: 1.5 }}>
+              <strong>How to enable:</strong> Go to <em>Online Store → Themes → Customize → App embeds</em>, toggle on <strong>Product Deal Countdown</strong>, and click Save.
+            </div>
+          </div>
+
         </div>
-
-        {/* Settings Form */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-          <div style={{ background: "#fff", borderRadius: "8px", padding: "20px", border: "1px solid #e1e3e5" }}>
-            <h3 style={{ fontSize: "15px", fontWeight: "600", margin: "0 0 16px 0" }}>Block Copy & Duration</h3>
-            <div style={{ marginBottom: "14px" }}>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "6px" }}>Timer Heading</label>
-              <input type="text" value={heading} onChange={(e) => setHeading(e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: "4px", border: "1px solid #c9cccf", boxSizing: "border-box" }} />
-            </div>
-            <div style={{ marginBottom: "14px" }}>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "6px" }}>Urgency Subtext</label>
-              <input type="text" value={urgencyNote} onChange={(e) => setUrgencyNote(e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: "4px", border: "1px solid #c9cccf", boxSizing: "border-box" }} />
-            </div>
-            <div style={{ display: "flex", gap: "12px" }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "6px" }}>Hours</label>
-                <input type="text" value={hours} onChange={(e) => setHours(e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: "4px", border: "1px solid #c9cccf", boxSizing: "border-box" }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "6px" }}>Minutes</label>
-                <input type="text" value={minutes} onChange={(e) => setMinutes(e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: "4px", border: "1px solid #c9cccf", boxSizing: "border-box" }} />
-              </div>
-            </div>
-          </div>
-
-          <div style={{ background: "#fff", borderRadius: "8px", padding: "20px", border: "1px solid #e1e3e5" }}>
-            <h3 style={{ fontSize: "15px", fontWeight: "600", margin: "0 0 16px 0" }}>Card & Digit Colors</h3>
-            <div style={{ marginBottom: "12px" }}>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "4px" }}>Card Background</label>
-              <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} style={{ width: "100%", height: "34px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
-            </div>
-            <div style={{ marginBottom: "12px" }}>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "4px" }}>Border Color</label>
-              <input type="color" value={borderColor} onChange={(e) => setBorderColor(e.target.value)} style={{ width: "100%", height: "34px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
-            </div>
-            <div style={{ marginBottom: "12px" }}>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "4px" }}>Digit Box Color</label>
-              <input type="color" value={digitBgColor} onChange={(e) => setDigitBgColor(e.target.value)} style={{ width: "100%", height: "34px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "4px" }}>Text & Digit Color</label>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} style={{ flex: 1, height: "34px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
-                <input type="color" value={digitTextColor} onChange={(e) => setDigitTextColor(e.target.value)} style={{ flex: 1, height: "34px", border: "1px solid #c9cccf", borderRadius: "4px" }} />
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   );
