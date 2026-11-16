@@ -33,9 +33,17 @@ const THEME_PRESETS = [
 ];
 
 export const loader = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
 
   let storeProducts = [];
+  let debugInfo = {
+    shop: session?.shop || "UNKNOWN",
+    sessionScopes: session?.scope || "NONE",
+    productQueryStatus: "PENDING",
+    productCount: 0,
+    errorDetail: null,
+  };
+
   let settings = {
     heading: "FLASH DEAL ENDS IN",
     urgencyNote: "Order before the timer runs out to claim your special price.",
@@ -48,7 +56,7 @@ export const loader = async ({ request }) => {
     minutes: "30",
   };
 
-  // 1. 独立读取已保存的倒计时配置（确保刷新/重进页面 100% 回显）
+  // 1. 独立读取已保存的倒计时配置
   try {
     const metaResponse = await admin.graphql(`
       #graphql
@@ -63,14 +71,13 @@ export const loader = async ({ request }) => {
     const metaJson = await metaResponse.json();
     const rawValue = metaJson?.data?.currentAppInstallation?.metafield?.value;
     if (rawValue) {
-      const parsed = JSON.parse(rawValue);
-      settings = { ...settings, ...parsed };
+      settings = { ...settings, ...JSON.parse(rawValue) };
     }
   } catch (metaErr) {
     console.error("Failed to load metafield settings:", metaErr);
   }
 
-  // 2. 独立读取店铺真实商品列表（满足 Shopify 2.2.1 权限审核且互不干扰）
+  // 2. 独立读取店铺真实商品列表（最简稳定字段）
   try {
     const prodResponse = await admin.graphql(`
       #graphql
@@ -79,8 +86,12 @@ export const loader = async ({ request }) => {
           nodes {
             id
             title
-            featuredImage {
-              url
+            featuredMedia {
+              preview {
+                image {
+                  url
+                }
+              }
             }
             variants(first: 1) {
               nodes {
@@ -92,18 +103,26 @@ export const loader = async ({ request }) => {
       }
     `);
     const prodJson = await prodResponse.json();
-    const nodes = prodJson?.data?.products?.nodes || [];
-    storeProducts = nodes.map((p) => ({
-      id: p.id,
-      title: p.title,
-      price: p.variants?.nodes?.[0]?.price || "29.99",
-      image: p.featuredImage?.url || null,
-    }));
+    if (prodJson?.errors) {
+      debugInfo.productQueryStatus = "GRAPHQL_ERROR";
+      debugInfo.errorDetail = JSON.stringify(prodJson.errors);
+    } else {
+      const nodes = prodJson?.data?.products?.nodes || [];
+      debugInfo.productQueryStatus = "SUCCESS";
+      debugInfo.productCount = nodes.length;
+      storeProducts = nodes.map((p) => ({
+        id: p.id,
+        title: p.title,
+        price: p.variants?.nodes?.[0]?.price || "29.99",
+        image: p.featuredMedia?.preview?.image?.url || null,
+      }));
+    }
   } catch (prodErr) {
-    console.error("Failed to load store products:", prodErr);
+    debugInfo.productQueryStatus = "EXCEPTION";
+    debugInfo.errorDetail = prodErr?.message || String(prodErr);
   }
 
-  return { settings, storeProducts };
+  return { settings, storeProducts, debugInfo };
 };
 
 export const action = async ({ request }) => {
@@ -143,10 +162,6 @@ export const action = async ({ request }) => {
               key
               value
             }
-            userErrors {
-              field
-              message
-            }
           }
         }`,
         {
@@ -172,7 +187,7 @@ export const action = async ({ request }) => {
 };
 
 export default function ProductTimerIndex() {
-  const { settings, storeProducts } = useLoaderData();
+  const { settings, storeProducts, debugInfo } = useLoaderData();
   const actionData = useActionData();
   const navigation = useNavigation();
   const submit = useSubmit();
@@ -189,7 +204,6 @@ export default function ProductTimerIndex() {
   const [selectedProductIndex, setSelectedProductIndex] = useState(0);
   const [saved, setSaved] = useState(false);
 
-  // 同步 loader 最新读取到的配置，防止路由重新验证时状态不同步
   useEffect(() => {
     setHeading(settings.heading);
     setUrgencyNote(settings.urgencyNote);
@@ -228,7 +242,7 @@ export default function ProductTimerIndex() {
   };
 
   const currentProduct = storeProducts[selectedProductIndex] || {
-    title: storeProducts.length > 0 ? storeProducts[0].title : "No products in store yet",
+    title: "No products in store yet",
     price: "0.00",
     image: null,
   };
@@ -237,6 +251,12 @@ export default function ProductTimerIndex() {
     <div style={{ padding: "28px 32px", minHeight: "100vh", backgroundColor: "#f1f2f4", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#1a1c1d" }}>
       <div style={{ maxWidth: "1080px", margin: "0 auto" }}>
         
+        {/* 顶部实时诊断栏 */}
+        <div style={{ background: "#fffbeb", border: "1px solid #f59e0b", borderRadius: "10px", padding: "12px 16px", marginBottom: "20px", fontSize: "12.5px", color: "#92400e", fontFamily: "monospace" }}>
+          <strong>[API Diagnostic]</strong> Shop: <code>{debugInfo.shop}</code> | Scopes: <code>{debugInfo.sessionScopes}</code> | Status: <code>{debugInfo.productQueryStatus}</code> | Found: <code>{debugInfo.productCount}</code>
+          {debugInfo.errorDetail && <div style={{ marginTop: "6px", color: "#b91c1c" }}>Error: {debugInfo.errorDetail}</div>}
+        </div>
+
         {/* 顶部通栏 */}
         <div style={{ background: "#ffffff", padding: "20px 24px", borderRadius: "12px", border: "1px solid #e3e5e7", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
           <div>
@@ -267,8 +287,6 @@ export default function ProductTimerIndex() {
           
           {/* 左侧：配置面板 */}
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-            
-            {/* 预设风格选择器 */}
             <div style={{ background: "#ffffff", borderRadius: "12px", padding: "22px", border: "1px solid #e3e5e7", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
               <h3 style={{ fontSize: "15px", fontWeight: "700", margin: "0 0 4px 0" }}>Quick Theme Presets</h3>
               <p style={{ fontSize: "12.5px", color: "#616a75", margin: "0 0 14px 0" }}>One-click designer color schemes tailored for high conversion.</p>
@@ -298,7 +316,6 @@ export default function ProductTimerIndex() {
               </div>
             </div>
 
-            {/* 文案与时间 */}
             <div style={{ background: "#ffffff", borderRadius: "12px", padding: "22px", border: "1px solid #e3e5e7", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
               <h3 style={{ fontSize: "15px", fontWeight: "700", margin: "0 0 16px 0" }}>Content & Countdown Duration</h3>
               <div style={{ marginBottom: "14px" }}>
@@ -321,7 +338,6 @@ export default function ProductTimerIndex() {
               </div>
             </div>
 
-            {/* 自定义调色板 */}
             <div style={{ background: "#ffffff", borderRadius: "12px", padding: "22px", border: "1px solid #e3e5e7", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
               <h3 style={{ fontSize: "15px", fontWeight: "700", margin: "0 0 16px 0" }}>Custom Color Fine-Tuning</h3>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "14px" }}>
@@ -355,7 +371,6 @@ export default function ProductTimerIndex() {
                 </div>
               </div>
             </div>
-
           </div>
 
           {/* 右侧：读取店铺真实商品的实景预览 */}
@@ -365,7 +380,6 @@ export default function ProductTimerIndex() {
               <span style={{ fontSize: "11px", color: "#108043", backgroundColor: "#e3f1df", padding: "2px 8px", borderRadius: "6px", fontWeight: "600" }}>Above Product Title</span>
             </div>
 
-            {/* 店铺真实商品选择器（让商家和审核员可以直接切换查看店铺真实商品效果） */}
             {storeProducts.length > 0 && (
               <div style={{ marginBottom: "14px" }}>
                 <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#4a4f55", marginBottom: "6px" }}>
@@ -385,10 +399,7 @@ export default function ProductTimerIndex() {
               </div>
             )}
 
-            {/* 真实店铺商品页结构渲染 */}
             <div style={{ padding: "16px", backgroundColor: "#fafafa", borderRadius: "10px", border: "1px dashed #d2d5d8" }}>
-              
-              {/* 倒计时卡片渲染区（位于产品标题正上方） */}
               <div style={{
                 background: bgColor,
                 border: `1.5px solid ${borderColor}`,
@@ -426,7 +437,6 @@ export default function ProductTimerIndex() {
                 </div>
               </div>
 
-              {/* 店铺真实产品标题、图片与真实价格 */}
               <div style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "14px" }}>
                 {currentProduct.image && (
                   <img
@@ -445,7 +455,6 @@ export default function ProductTimerIndex() {
               <div style={{ backgroundColor: "#111213", color: "#fff", textAlign: "center", padding: "12px", borderRadius: "6px", fontSize: "13px", fontWeight: "600", opacity: 0.9 }}>
                 Add to cart
               </div>
-
             </div>
 
             <div style={{ marginTop: "14px", fontSize: "12px", color: "#616a75", lineHeight: 1.5 }}>
