@@ -6,6 +6,6 @@ export default [
     route("app", "routes/app._index.jsx"),
   ]),
   route("privacy", "routes/privacy.jsx"),
-  route("api/webhooks", "routes/api.webhooks.jsx"),
+  route("webhooks/*", "routes/webhooks.$.jsx"),
   route("auth/*", "routes/auth.$.jsx"),
 ] satisfies RouteConfig;
